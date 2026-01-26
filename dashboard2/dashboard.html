@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Home Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="bg-animation">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+    <div class="circle c3"></div>
+  </div>
+
+  <!-- Alert Sounds -->
+  <audio id="gasAlertSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="waterAlertSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/1862/1862-preview.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- TOP BAR -->
+  <header class="topbar glass">
+    <div class="topbar-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </div>
+      <div class="title-section">
+        <h1>Smart Home</h1>
+        <p class="greeting" id="greeting">Good Morning!</p>
+      </div>
+    </div>
+    
+    <div class="topbar-center">
+      <div class="datetime">
+        <div class="time" id="time">--:--</div>
+        <div class="date" id="date">---</div>
+      </div>
+    </div>
+    
+    <div class="topbar-right">
+      <div class="user-badge" id="userBadge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span id="userRole">Admin</span>
+      </div>
+      <button class="voice-btn" id="voiceBtn" onclick="startVoiceControl()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </button>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <button class="logout-btn" onclick="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- BUZZER-CONNECTED ALERTS BAR -->
+  <div class="alerts-bar" id="alertsBar">
+    <!-- Gas Alert -->
+    <div class="alert-item danger" id="gasAlert" style="display: none;">
+      <div class="alert-icon pulse-danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 2h8l4 10H4L8 2z"></path>
+          <circle cx="12" cy="18" r="4"></circle>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <strong>GAS LEAK DETECTED!</strong>
+        <span id="gasAlertMsg">Dangerous gas level - Buzzer is ON</span>
+      </div>
+      <button class="alert-dismiss" onclick="dismissAlert('gasAlert')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <!-- Water Level Alert -->
+    <div class="alert-item info" id="waterAlert" style="display: none;">
+      <div class="alert-icon pulse-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <strong>WATER TANK FULL!</strong>
+        <span id="waterAlertMsg">Auto cutoff activated - Buzzer is ON</span>
+      </div>
+      <button class="alert-dismiss" onclick="dismissAlert('waterAlert')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <!-- High Voltage Alert -->
+    <div class="alert-item warning" id="voltageAlert" style="display: none;">
+      <div class="alert-icon pulse-warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <strong>HIGH VOLTAGE WARNING!</strong>
+        <span>Voltage exceeds safe limit</span>
+      </div>
+      <button class="alert-dismiss" onclick="dismissAlert('voltageAlert')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS + WEATHER ROW -->
+  <div class="top-widgets">
+    <!-- Quick Actions -->
+    <section class="quick-actions glass animate-slide-up">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        Quick Actions
+      </h3>
+      <div class="scenes-grid">
+        <button class="scene-btn" onclick="activateScene('allOff')">
+          <div class="scene-icon off">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+              <line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <span>All Off</span>
+        </button>
+        <button class="scene-btn" onclick="activateScene('allOn')">
+          <div class="scene-icon on">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+            </svg>
+          </div>
+          <span>All On</span>
+        </button>
+        <button class="scene-btn" onclick="activateScene('goodNight')">
+          <div class="scene-icon night">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </div>
+          <span>Night</span>
+        </button>
+        <button class="scene-btn" onclick="activateScene('goodMorning')">
+          <div class="scene-icon morning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="17" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="4.22" y1="10.22" x2="5.64" y2="11.64"></line>
+              <line x1="1" y1="18" x2="3" y2="18"></line>
+              <line x1="21" y1="18" x2="23" y2="18"></line>
+              <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"></line>
+              <line x1="23" y1="22" x2="1" y2="22"></line>
+            </svg>
+          </div>
+          <span>Morning</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Weather Widget -->
+    <section class="weather-widget glass animate-slide-up delay-1">
+      <div class="weather-main">
+        <div class="weather-icon" id="weatherIconBox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+          </svg>
+        </div>
+        <div class="weather-info">
+          <div class="weather-temp"><span id="weatherTemp">--</span>°C</div>
+          <div class="weather-desc" id="weatherDesc">Loading...</div>
+          <div class="weather-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span id="weatherCity">--</span>
+          </div>
+        </div>
+      </div>
+      <div class="weather-details">
+        <div class="weather-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+          </svg>
+          <span id="weatherHumidity">--%</span>
+        </div>
+        <div class="weather-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path>
+          </svg>
+          <span id="weatherWind">--</span>
+        </div>
+        <div class="weather-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+          </svg>
+          <span id="weatherFeels">--°C</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="dashboard-main">
+    
+    <!-- LEFT COLUMN: Sensors -->
+    <div class="sensors-column">
+      <!-- ESP32-1 Sensors -->
+      <section class="sensor-panel glass animate-slide-up delay-2" id="panel1">
+        <div class="panel-header">
+          <div class="panel-icon energy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
+          <div class="panel-title">
+            <h2>Energy Monitor</h2>
+            <span class="panel-subtitle">ESP32-1 | IP: <span id="esp1_ip">---</span></span>
+          </div>
+          <div class="status-indicator" id="esp1_status_dot">
+            <span class="dot"></span>
+            <span id="esp1_status">Offline</span>
+          </div>
+        </div>
+        
+        <div class="sensor-cards">
+          <div class="sensor-card voltage animate-card">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></div>
+            <div class="sensor-info">
+              <label>Voltage</label>
+              <strong><span id="v1">0</span><small>V</small></strong>
+            </div>
+            <div class="sensor-bar"><div class="bar-fill" id="v1_gauge"></div></div>
+          </div>
+          
+          <div class="sensor-card current animate-card delay-1">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg></div>
+            <div class="sensor-info">
+              <label>Current-1</label>
+              <strong><span id="i1">0</span><small>A</small></strong>
+            </div>
+            <div class="sensor-bar"><div class="bar-fill" id="i1_gauge"></div></div>
+          </div>
+          
+          <div class="sensor-card current animate-card delay-2">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg></div>
+            <div class="sensor-info">
+              <label>Current-2</label>
+              <strong><span id="i2">0</span><small>A</small></strong>
+            </div>
+            <div class="sensor-bar"><div class="bar-fill" id="i2_gauge"></div></div>
+          </div>
+          
+          <div class="sensor-card power animate-card delay-3">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg></div>
+            <div class="sensor-info">
+              <label>Power</label>
+              <strong><span id="p1">0</span><small>W</small></strong>
+            </div>
+            <div class="sensor-bar"><div class="bar-fill" id="p1_gauge"></div></div>
+          </div>
+          
+          <div class="sensor-card energy animate-card delay-4">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+            <div class="sensor-info">
+              <label>Today</label>
+              <strong><span id="today_wh">0</span><small>Wh</small></strong>
+            </div>
+          </div>
+          
+          <div class="sensor-card energy animate-card delay-5">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg></div>
+            <div class="sensor-info">
+              <label>Month</label>
+              <strong><span id="month_wh">0</span><small>Wh</small></strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ESP32-2 Sensors -->
+      <section class="sensor-panel glass animate-slide-up delay-3" id="panel2">
+        <div class="panel-header">
+          <div class="panel-icon water">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+            </svg>
+          </div>
+          <div class="panel-title">
+            <h2>Environment</h2>
+            <span class="panel-subtitle">ESP32-2 | IP: <span id="esp2_ip">---</span></span>
+          </div>
+          <div class="status-indicator" id="esp2_status_dot">
+            <span class="dot"></span>
+            <span id="esp2_status">Offline</span>
+          </div>
+        </div>
+        
+        <div class="sensor-cards">
+          <div class="sensor-card water animate-card">
+            <div class="tank-visual">
+              <div class="tank">
+                <div class="tank-fill" id="water_tank"></div>
+                <div class="tank-waves"></div>
+              </div>
+            </div>
+            <div class="sensor-info">
+              <label>Water Level</label>
+              <strong><span id="wl">0</span><small>%</small></strong>
+            </div>
+          </div>
+          
+          <div class="sensor-card distance animate-card delay-1">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 3H3v7h18V3z"></path><path d="M21 14H3v7h18v-7z"></path><path d="M12 10v4"></path></svg></div>
+            <div class="sensor-info">
+              <label>Distance</label>
+              <strong><span id="dist">0</span><small>cm</small></strong>
+            </div>
+          </div>
+          
+          <div class="sensor-card gas animate-card delay-2">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8l4 10H4L8 2z"></path><circle cx="12" cy="18" r="4"></circle></svg></div>
+            <div class="sensor-info">
+              <label>Gas</label>
+              <strong><span id="gas">0</span><small>ppm</small></strong>
+            </div>
+            <div class="sensor-bar gas-bar"><div class="bar-fill" id="gas_gauge"></div></div>
+          </div>
+          
+          <div class="sensor-card temp animate-card delay-3">
+            <div class="sensor-icon thermometer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg></div>
+            <div class="sensor-info">
+              <label>Temperature</label>
+              <strong><span id="temp">0</span><small>°C</small></strong>
+            </div>
+          </div>
+          
+          <div class="sensor-card humidity animate-card delay-4">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg></div>
+            <div class="sensor-info">
+              <label>Humidity</label>
+              <strong><span id="hum">0</span><small>%</small></strong>
+            </div>
+          </div>
+          
+          <div class="sensor-card danger animate-card delay-5" id="danger_card">
+            <div class="sensor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+            <div class="sensor-info">
+              <label>Danger</label>
+              <strong id="danger">NO</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT COLUMN: Controls + Billing -->
+    <div class="controls-column">
+      
+      <!-- CONTROL PANEL -->
+      <section class="control-panel glass animate-slide-up delay-4">
+        <div class="panel-header">
+          <div class="panel-icon control">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <h2>Device Controls</h2>
+        </div>
+        
+        <div class="control-grid">
+          <div class="control-item">
+            <div class="control-info">
+              <span class="control-name" id="relay1_name">Relay 1</span>
+              <span class="control-status" id="relay1_status">OFF</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="relay1" onchange="toggleRelay(1)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="control-item">
+            <div class="control-info">
+              <span class="control-name" id="relay2_name">Relay 2</span>
+              <span class="control-status" id="relay2_status">OFF</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="relay2" onchange="toggleRelay(2)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="control-item pump">
+            <div class="control-info">
+              <span class="control-name" id="pump_name">Water Pump</span>
+              <span class="control-status" id="pump_status">OFF</span>
+            </div>
+            <label class="switch pump-switch">
+              <input type="checkbox" id="pump" onchange="togglePump()">
+              <span class="slider">
+                <span class="pump-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                </span>
+              </span>
+            </label>
+          </div>
+          
+          <div class="control-item auto">
+            <div class="control-info">
+              <span class="control-name">Auto Cutoff</span>
+              <span class="control-status" id="auto_status">OFF</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="autoCutoff" onchange="toggleAuto()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- BILLING PANEL -->
+      <section class="billing-panel glass animate-slide-up delay-5">
+        <div class="panel-header">
+          <div class="panel-icon billing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+              <line x1="1" y1="10" x2="23" y2="10"></line>
+            </svg>
+          </div>
+          <h2>Billing</h2>
+          <div class="unit-rate">
+            <span>Rate: <strong id="unit_rate">0</strong> BDT/kWh</span>
+            <button class="edit-btn" onclick="openRateModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="billing-grid">
+          <div class="billing-item today">
+            <div class="billing-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div class="billing-info">
+              <label>Today</label>
+              <strong>BDT <span id="today_cost">0.00</span></strong>
+            </div>
+          </div>
+          
+          <div class="billing-item month">
+            <div class="billing-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div class="billing-info">
+              <label>This Month</label>
+              <strong>BDT <span id="month_cost">0.00</span></strong>
+            </div>
+          </div>
+          
+          <div class="billing-item total">
+            <div class="billing-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+            <div class="billing-info">
+              <label>Total</label>
+              <strong>BDT <span id="total_cost">0.00</span></strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCHEDULES PANEL -->
+      <section class="schedules-panel glass animate-slide-up delay-6">
+        <div class="panel-header">
+          <div class="panel-icon schedule">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h2>Schedules</h2>
+          <button class="add-btn" onclick="openScheduleModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add
+          </button>
+        </div>
+        <div class="schedules-list" id="schedulesList">
+          <div class="no-schedules">No schedules set</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- CHARTS SECTION -->
+  <section class="charts-section animate-slide-up delay-7">
+    <div class="charts-grid">
+      <div class="chart-box glass">
+        <div class="chart-header">
+          <h3>Power Usage</h3>
+          <span class="chart-value" id="chartPowerValue">0 W</span>
+        </div>
+        <canvas id="powerChart"></canvas>
+      </div>
+      
+      <div class="chart-box glass">
+        <div class="chart-header">
+          <h3>Temperature</h3>
+          <span class="chart-value" id="chartTempValue">0°C</span>
+        </div>
+        <canvas id="tempChart"></canvas>
+      </div>
+      
+      <div class="chart-box glass">
+        <div class="chart-header">
+          <h3>Gas Level</h3>
+          <span class="chart-value" id="chartGasValue">0 ppm</span>
+        </div>
+        <canvas id="gasChart"></canvas>
+      </div>
+      
+      <div class="chart-box glass">
+        <div class="chart-header">
+          <h3>Daily Cost</h3>
+          <span class="chart-value" id="chartCostValue">BDT 0</span>
+        </div>
+        <canvas id="costChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODALS -->
+  <!-- Rate Modal -->
+  <div class="modal-overlay" id="rateModal">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Edit Unit Rate</h3>
+        <button class="modal-close" onclick="closeModal('rateModal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Unit Rate (BDT/kWh)</label>
+          <input type="number" id="newRate" step="0.1" placeholder="Enter rate">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('rateModal')">Cancel</button>
+        <button class="btn-save" onclick="saveUnitRate()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Modal - Updated with Timer -->
+  <div class="modal-overlay" id="scheduleModal">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add Schedule</h3>
+        <button class="modal-close" onclick="closeModal('scheduleModal')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Device</label>
+          <select id="scheduleDevice">
+            <option value="relay1">Relay 1</option>
+            <option value="relay2">Relay 2</option>
+            <option value="pump">Water Pump</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Action</label>
+          <select id="scheduleAction">
+            <option value="on">Turn ON</option>
+            <option value="off">Turn OFF</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Start Time</label>
+          <input type="time" id="scheduleTime">
+        </div>
+        <div class="form-group">
+          <label>Auto OFF After (Optional Timer)</label>
+          <select id="scheduleDuration">
+            <option value="0">No Timer (Stay ON/OFF)</option>
+            <option value="5">5 Minutes</option>
+            <option value="10">10 Minutes</option>
+            <option value="15">15 Minutes</option>
+            <option value="30">30 Minutes</option>
+            <option value="60">1 Hour</option>
+            <option value="120">2 Hours</option>
+            <option value="180">3 Hours</option>
+            <option value="240">4 Hours</option>
+            <option value="300">5 Hours</option>
+            <option value="360">6 Hours</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Repeat Days</label>
+          <div class="days-grid">
+            <label class="day-btn"><input type="checkbox" name="day" value="0"><span>S</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="1"><span>M</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="2"><span>T</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="3"><span>W</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="4"><span>T</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="5"><span>F</span></label>
+            <label class="day-btn"><input type="checkbox" name="day" value="6"><span>S</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('scheduleModal')">Cancel</button>
+        <button class="btn-save" onclick="saveSchedule()">Add Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voice Overlay -->
+  <div class="voice-overlay" id="voiceOverlay">
+    <div class="voice-modal glass">
+      <div class="voice-animation">
+        <div class="voice-ring"></div>
+        <div class="voice-ring"></div>
+        <div class="voice-ring"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="voice-mic">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </div>
+      <p id="voiceStatus">Listening...</p>
+      <span class="voice-hint">Say "turn on light" or "turn off pump"</span>
+      <button class="btn-cancel" onclick="stopVoiceControl()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
